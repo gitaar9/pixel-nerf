@@ -196,6 +196,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
             c=all_c.to(device=device) if all_c is not None else None,
         )
 
+        # line below is basically net.call()/net.forward()
         render_dict = DotMap(render_par(all_rays, want_weights=True,))
         coarse = render_dict.coarse
         fine = render_dict.fine

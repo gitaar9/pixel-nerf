@@ -251,6 +251,23 @@ def gen_rays(poses, width, height, focal, z_near, z_far, c=None, ndc=False):
     cam_raydir = torch.matmul(
         poses[:, None, None, :3, :3], cam_unproj_map.unsqueeze(-1)
     )[:, :, :, :, 0]
+    # bullshit prints:
+    # print(poses)
+    # print(poses[:, None, None, :3, 3])
+    # print(poses[:, None, None, :3, :3])
+    # exit()
+    # print("poses")
+    # print(poses)
+    # print("cam centers")
+    # print(poses[:, None, None, :3, 3])
+    # # print(cam_centers)
+    #
+    # print("cam map")
+    # print(cam_unproj_map.shape)
+    # print("raydirs")
+    # print(cam_raydir.shape)
+    # exit()
+
     if ndc:
         if not (z_near == 0 and z_far == 1):
             warnings.warn(

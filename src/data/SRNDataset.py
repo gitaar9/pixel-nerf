@@ -7,13 +7,15 @@ import numpy as np
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
 
 
+
+
 class SRNDataset(torch.utils.data.Dataset):
     """
     Dataset from SRN (V. Sitzmann et al. 2020)
     """
 
     def __init__(
-        self, path, stage="train", image_size=(128, 128), world_scale=1.0,
+        self, path, stage="train", image_size=(128, 128), world_scale=1.0, only_load_these_ids=None
     ):
         """
         :param stage train | val | test
@@ -38,6 +40,8 @@ class SRNDataset(torch.utils.data.Dataset):
         self.intrins = sorted(
             glob.glob(os.path.join(self.base_path, "*", "intrinsics.txt"))
         )
+        if only_load_these_ids:
+            self.intrins = [p for p in self.intrins if any(id in p for id in only_load_these_ids)]
         self.image_to_tensor = get_image_to_tensor_balanced()
         self.mask_to_tensor = get_mask_to_tensor()
 
@@ -107,7 +111,6 @@ class SRNDataset(torch.utils.data.Dataset):
         all_poses = torch.stack(all_poses)
         all_masks = torch.stack(all_masks)
         all_bboxes = torch.stack(all_bboxes)
-
         if all_imgs.shape[-2:] != self.image_size:
             scale = self.image_size[0] / all_imgs.shape[-2]
             focal *= scale

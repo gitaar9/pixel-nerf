@@ -12,6 +12,78 @@ from torch.nn import DataParallel
 from dotmap import DotMap
 
 
+def plot_points(coordinates_list, rgb, alpha, plt_ax=None):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # need to plot the points using their alpha/rgb
+    rgb = rgb.cpu().detach().numpy().squeeze()
+    alpha = alpha.cpu().detach().numpy().squeeze()
+    alpha = alpha / np.max(alpha)
+    print("RGB array shape: ", rgb.shape, " Min and max: ", np.min(rgb), np.max(rgb))
+    print("Alpha array shape: ", alpha.shape, " Min and max: ", np.min(alpha), np.max(alpha))
+    rgba = np.concatenate((rgb, np.expand_dims(alpha, axis=1)), axis=1)  # Combine rgb and alpha
+
+    # Filter out points with to little alpha or completely white points
+    zipped = [(c, (r, g, b, a)) for c, (r, g, b, a) in list(zip(coordinates_list, rgba)) if a > 0.01 and ((b + g + r) < 2.9)]
+    coordinates_list, rgba = zip(*zipped)
+    print("Nr of points left after filtering: ", len(coordinates_list))
+
+    # Plot the points in 3D
+    if plt_ax is None:
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+    else:
+        ax = plt_ax
+    ax.view_init(elev=0, azim=90)
+
+    ax.scatter(*list(zip(*coordinates_list)), marker='.', c=list(rgba))
+
+    if plt_ax is None:
+        limit = .25
+        ax.set_xlim3d(-limit, limit)
+        ax.set_ylim3d(-limit, limit)
+        ax.set_zlim3d(-limit, limit)
+
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    if plt_ax is None:
+        plt.show()
+
+
+def plot_3d_points(coordinates_list, max_points=15000, extra_point=None, plt_ax=None, strange_alpha=False, alpha=1.):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    if len(coordinates_list) > max_points:
+        coordinates_list = coordinates_list.copy()
+        idxs = np.random.choice(np.arange(len(coordinates_list)), 15000, replace=False)
+        coordinates_list = coordinates_list[idxs]
+    if plt_ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+    else:
+        ax = plt_ax
+
+    rgba = [(.2, .2, .6, alpha) for _ in range(len(coordinates_list))]
+    if strange_alpha:  # make pixels further away from mean less transparant
+        c_l_np = np.asarray(coordinates_list)
+        avg_coord = np.mean(c_l_np, axis=0)
+        avg_coord = np.concatenate([np.expand_dims(avg_coord, 0)] * c_l_np.shape[0], axis=0)
+        distance = (c_l_np - avg_coord) ** 2
+        distance = np.sum(distance, axis=1)
+        distance /= np.max(distance)
+        distance /= 2
+        distance **= 2
+        rgba = [(0.2, 0.2, .6, a) for a in list(distance)]
+    ax.scatter(*list(zip(*coordinates_list)), marker='.', c=rgba)
+    if extra_point is not None:
+        ax.scatter(*extra_point, marker='*')
+    if plt_ax is None:
+        plt.show()
+
+
 class _RenderWrapper(torch.nn.Module):
     def __init__(self, net, renderer, simple_output):
         super().__init__()
@@ -214,7 +286,8 @@ class NeRFRenderer(torch.nn.Module):
             else:
                 for pnts in split_points:
                     val_all.append(model(pnts, coarse=coarse))
-            points = None
+
+            points = None  # RESTORE TO DELETING THIS
             viewdirs = None
             # (B*K, 4) OR (SB, B'*K, 4)
             out = torch.cat(val_all, dim=eval_batch_dim)
@@ -224,6 +297,45 @@ class NeRFRenderer(torch.nn.Module):
             sigmas = out[..., 3]  # (B, K)
             if self.training and self.noise_std > 0.0:
                 sigmas = sigmas + torch.randn_like(sigmas) * self.noise_std
+
+            # # Start of my bullshit
+            # print(B, K)
+            # print(points.shape)
+            # t = points[0].cpu().detach().numpy()
+            #
+            # print(t[:len(t)//2].shape)
+            # print(rgbs.reshape(t.shape)[:len(t)//2].shape)
+            # print(sigmas.reshape((B*K))[:len(t)//2].shape)
+            # import matplotlib.pyplot as plt
+            # fig = plt.figure()
+            # ax = plt.axes(projection='3d')
+            #
+            # plot_points(t[:len(t)//2],
+            #             rgbs.reshape(t.shape)[:len(t)//2],
+            #             sigmas.reshape((B*K))[:len(t)//2],
+            #             plt_ax=ax)
+            # limit = .5
+            # ax.set_xlim3d(-limit, limit)
+            # ax.set_ylim3d(-limit, limit)
+            # ax.set_zlim3d(-limit, limit)
+            #
+            # fig = plt.figure()
+            # ax = plt.axes(projection='3d')
+            # plot_points(t[len(t)//2:],
+            #             rgbs.reshape(t.shape)[len(t)//2:],
+            #             sigmas.reshape((B*K))[len(t)//2:],
+            #             plt_ax=ax)
+            # limit = .5
+            # ax.set_xlim3d(-limit, limit)
+            # ax.set_ylim3d(-limit, limit)
+            # ax.set_zlim3d(-limit, limit)
+            #
+            # plt.show()
+            # exit()
+            #
+            # # END
+
+
 
             # compute the gradients in log space of the alphas, for NV TV occupancy regularizer
             alphas = 1 - torch.exp(-deltas * torch.relu(sigmas))  # (B, K)

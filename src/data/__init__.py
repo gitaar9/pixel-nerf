@@ -45,7 +45,7 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, **
             train_aug_flags = {"extra_inherit_attrs": ["sub_format"]}
     else:
         raise NotImplementedError("Unsupported dataset type", dataset_type)
-
+    print(dset_class)
     want_train = want_split != "val" and want_split != "test"
     want_val = want_split != "train" and want_split != "test"
     want_test = want_split != "train" and want_split != "val"
