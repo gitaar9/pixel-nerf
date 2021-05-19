@@ -12,6 +12,7 @@ class Trainer:
         self.net = net
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
+        self.device = device
 
         self.train_data_loader = torch.utils.data.DataLoader(
             train_dataset,
@@ -170,6 +171,8 @@ class Trainer:
                             loss_str,
                             " lr",
                             self.optim.param_groups[0]["lr"],
+                            " mem ",
+                            torch.cuda.max_memory_allocated(device=self.device)
                         )
 
                     if batch % self.eval_interval == 0:
