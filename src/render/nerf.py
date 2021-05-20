@@ -91,7 +91,7 @@ class _RenderWrapper(torch.nn.Module):
         self.renderer = renderer
         self.simple_output = simple_output
 
-    def forward(self, rays, want_weights=False):
+    def forward(self, rays, want_weights=False, mirror_x=False):
         if rays.shape[0] == 0:
             return (
                 torch.zeros(0, 3, device=rays.device),
@@ -99,7 +99,7 @@ class _RenderWrapper(torch.nn.Module):
             )
 
         outputs = self.renderer(
-            self.net, rays, want_weights=want_weights and not self.simple_output
+            self.net, rays, want_weights=want_weights and not self.simple_output, mirror_x=mirror_x
         )
         if self.simple_output:
             if self.renderer.using_fine:
@@ -232,7 +232,11 @@ class NeRFRenderer(torch.nn.Module):
         z_samp = torch.max(torch.min(z_samp, rays[:, -1:]), rays[:, -2:-1])
         return z_samp
 
-    def composite(self, model, rays, z_samp, coarse=True, sb=0):
+    def invert_tensor(self, t):
+        t[:, 0] = t[:, 0] * -1
+        return t
+
+    def composite(self, model, rays, z_samp, coarse=True, sb=0, mirror_x=False):
         """
         Render RGB and depth for each ray using NeRF alpha-compositing formula,
         given sampled positions along each ray (see sample_*)
@@ -256,7 +260,8 @@ class NeRFRenderer(torch.nn.Module):
             # (B, K, 3)
             points = rays[:, None, :3] + z_samp.unsqueeze(2) * rays[:, None, 3:6]
             points = points.reshape(-1, 3)  # (B*K, 3)
-
+            if mirror_x:
+                points = self.invert_tensor(points)
             use_viewdirs = hasattr(model, "use_viewdirs") and model.use_viewdirs
 
             val_all = []
@@ -278,6 +283,8 @@ class NeRFRenderer(torch.nn.Module):
                     viewdirs = viewdirs.reshape(sb, -1, 3)  # (SB, B'*K, 3)
                 else:
                     viewdirs = viewdirs.reshape(-1, 3)  # (B*K, 3)
+                if mirror_x:
+                    viewdirs = self.invert_tensor(viewdirs)
                 split_viewdirs = torch.split(
                     viewdirs, eval_batch_size, dim=eval_batch_dim
                 )
@@ -287,7 +294,7 @@ class NeRFRenderer(torch.nn.Module):
                 for pnts in split_points:
                     val_all.append(model(pnts, coarse=coarse))
 
-            points = None  # RESTORE TO DELETING THIS
+            # points = None  # RESTORE TO DELETING THIS
             viewdirs = None
             # (B*K, 4) OR (SB, B'*K, 4)
             out = torch.cat(val_all, dim=eval_batch_dim)
@@ -298,6 +305,9 @@ class NeRFRenderer(torch.nn.Module):
             if self.training and self.noise_std > 0.0:
                 sigmas = sigmas + torch.randn_like(sigmas) * self.noise_std
 
+            # compute the gradients in log space of the alphas, for NV TV occupancy regularizer
+            alphas = 1 - torch.exp(-deltas * torch.relu(sigmas))  # (B, K)
+
             # # Start of my bullshit
             # print(B, K)
             # print(points.shape)
@@ -305,14 +315,14 @@ class NeRFRenderer(torch.nn.Module):
             #
             # print(t[:len(t)//2].shape)
             # print(rgbs.reshape(t.shape)[:len(t)//2].shape)
-            # print(sigmas.reshape((B*K))[:len(t)//2].shape)
+            # print(alphas.reshape((B*K))[:len(t)//2].shape)
             # import matplotlib.pyplot as plt
             # fig = plt.figure()
             # ax = plt.axes(projection='3d')
             #
             # plot_points(t[:len(t)//2],
             #             rgbs.reshape(t.shape)[:len(t)//2],
-            #             sigmas.reshape((B*K))[:len(t)//2],
+            #             alphas.reshape((B*K))[:len(t)//2],
             #             plt_ax=ax)
             # limit = .5
             # ax.set_xlim3d(-limit, limit)
@@ -323,7 +333,7 @@ class NeRFRenderer(torch.nn.Module):
             # ax = plt.axes(projection='3d')
             # plot_points(t[len(t)//2:],
             #             rgbs.reshape(t.shape)[len(t)//2:],
-            #             sigmas.reshape((B*K))[len(t)//2:],
+            #             alphas.reshape((B*K))[len(t)//2:],
             #             plt_ax=ax)
             # limit = .5
             # ax.set_xlim3d(-limit, limit)
@@ -331,14 +341,12 @@ class NeRFRenderer(torch.nn.Module):
             # ax.set_zlim3d(-limit, limit)
             #
             # plt.show()
-            # exit()
             #
             # # END
 
 
 
-            # compute the gradients in log space of the alphas, for NV TV occupancy regularizer
-            alphas = 1 - torch.exp(-deltas * torch.relu(sigmas))  # (B, K)
+
             deltas = None
             sigmas = None
             alphas_shifted = torch.cat(
@@ -346,7 +354,7 @@ class NeRFRenderer(torch.nn.Module):
             )  # (B, K+1) = [1, a1, a2, ...]
             T = torch.cumprod(alphas_shifted, -1)  # (B)
             weights = alphas * T[:, :-1]  # (B, K)
-            alphas = None
+            # alphas = None
             alphas_shifted = None
 
             rgb_final = torch.sum(weights.unsqueeze(-1) * rgbs, -2)  # (B, 3)
@@ -359,10 +367,11 @@ class NeRFRenderer(torch.nn.Module):
                 weights,
                 rgb_final,
                 depth_final,
+                alphas,
             )
 
     def forward(
-        self, model, rays, want_weights=False,
+        self, model, rays, want_weights=False, mirror_x=False
     ):
         """
         :model nerf model, should return (SB, B, (r, g, b, sigma))
@@ -382,15 +391,19 @@ class NeRFRenderer(torch.nn.Module):
             assert len(rays.shape) == 3
             superbatch_size = rays.shape[0]
             rays = rays.reshape(-1, 8)  # (SB * B, 8)
-
+            inverse_alphas = None  # In case mirror_x is false
             z_coarse = self.sample_coarse(rays)  # (B, Kc)
             coarse_composite = self.composite(
                 model, rays, z_coarse, coarse=True, sb=superbatch_size,
             )
+            if mirror_x:
+                _, _, _, inverse_alphas = self.composite(
+                    model, rays, z_coarse, coarse=True, sb=superbatch_size, mirror_x=True
+                )
 
             outputs = DotMap(
                 coarse=self._format_outputs(
-                    coarse_composite, superbatch_size, want_weights=want_weights,
+                    coarse_composite, superbatch_size, want_weights=want_weights, inverse_alphas=inverse_alphas
                 ),
             )
 
@@ -409,21 +422,25 @@ class NeRFRenderer(torch.nn.Module):
                 fine_composite = self.composite(
                     model, rays, z_combine_sorted, coarse=False, sb=superbatch_size,
                 )
+                if mirror_x:
+                    _, _, _, inverse_alphas = self.composite(
+                        model, rays, z_combine_sorted, coarse=False, sb=superbatch_size, mirror_x=True
+                    )
                 outputs.fine = self._format_outputs(
-                    fine_composite, superbatch_size, want_weights=want_weights,
+                    fine_composite, superbatch_size, want_weights=want_weights, inverse_alphas=inverse_alphas
                 )
 
             return outputs
 
     def _format_outputs(
-        self, rendered_outputs, superbatch_size, want_weights=False,
+        self, rendered_outputs, superbatch_size, want_weights=False, inverse_alphas=None
     ):
-        weights, rgb, depth = rendered_outputs
+        weights, rgb, depth, alphas = rendered_outputs
         if superbatch_size > 0:
             rgb = rgb.reshape(superbatch_size, -1, 3)
             depth = depth.reshape(superbatch_size, -1)
             weights = weights.reshape(superbatch_size, -1, weights.shape[-1])
-        ret_dict = DotMap(rgb=rgb, depth=depth)
+        ret_dict = DotMap(rgb=rgb, depth=depth, alphas=alphas, inverse_alphas=inverse_alphas)
         if want_weights:
             ret_dict.weights = weights
         return ret_dict

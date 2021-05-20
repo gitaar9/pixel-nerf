@@ -87,8 +87,9 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
         self.lambda_coarse = conf.get_float("loss.lambda_coarse")
         self.lambda_fine = conf.get_float("loss.lambda_fine", 1.0)
+        self.lambda_sym = conf.get_float("loss.lambda_sym", 1.0)
         print(
-            "lambda coarse {} and fine {}".format(self.lambda_coarse, self.lambda_fine)
+            "lambda coarse {} and fine {} (sym {})".format(self.lambda_coarse, self.lambda_fine, self.lambda_sym)
         )
         self.rgb_coarse_crit = loss.get_rgb_loss(conf["loss.rgb"], True)
         fine_loss_conf = conf["loss.rgb"]
@@ -196,14 +197,15 @@ class PixelNeRFTrainer(trainlib.Trainer):
             c=all_c.to(device=device) if all_c is not None else None,
         )
 
-        # line below is basically net.call()/net.forward()
-        render_dict = DotMap(render_par(all_rays, want_weights=True,))
+        # line below is basically net.call()/net.forward() not true:
+        render_dict = DotMap(render_par(all_rays, want_weights=True, mirror_x=True,))
         coarse = render_dict.coarse
         fine = render_dict.fine
         using_fine = len(fine) > 0
 
         loss_dict = {}
 
+        # RGB loss (L1 or L2 on pixel rgb)
         rgb_loss = self.rgb_coarse_crit(coarse.rgb, all_rgb_gt)
         loss_dict["rc"] = rgb_loss.item() * self.lambda_coarse
         if using_fine:
@@ -211,7 +213,14 @@ class PixelNeRFTrainer(trainlib.Trainer):
             rgb_loss = rgb_loss * self.lambda_coarse + fine_loss * self.lambda_fine
             loss_dict["rf"] = fine_loss.item() * self.lambda_fine
 
-        loss = rgb_loss
+        # Symmetry based loss
+        sym_loss_function = torch.nn.MSELoss()
+        orig_sym_loss = sym_loss_function(coarse.alphas, coarse.inverse_alphas)
+        inverse_sym_loss = sym_loss_function(coarse.alphas, coarse.inverse_alphas)
+        sym_loss = (orig_sym_loss + inverse_sym_loss) * .5
+        loss_dict["sym_loss"] = sym_loss.item()
+
+        loss = rgb_loss + (sym_loss * self.lambda_sym)
         if is_train:
             loss.backward()
         loss_dict["t"] = loss.item()

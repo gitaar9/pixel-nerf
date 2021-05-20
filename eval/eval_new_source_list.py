@@ -268,13 +268,13 @@ with torch.no_grad():
                 novel_view_idxs = target_view_mask.nonzero(as_tuple=False).reshape(-1)
 
                 poses = poses[target_view_mask]  # (NV[-NS], 4, 4)
-                print(poses)
-                mult_matrix = [[1., -1., -1., -1.],
-                               [-1., 1., 1., 1.],
-                               [-1., 1., 1., 1.],
-                               [1., 1., 1., 1.]]
-                mult_matrix = torch.from_numpy(np.asarray(mult_matrix))
-                poses[1] = torch.mul(poses[0], mult_matrix)
+                # print(poses)
+                # mult_matrix = [[1., -1., -1., -1.],
+                #                [-1., 1., 1., 1.],
+                #                [-1., 1., 1., 1.],
+                #                [1., 1., 1., 1.]]
+                # mult_matrix = torch.from_numpy(np.asarray(mult_matrix))
+                # poses[1] = torch.mul(poses[0], mult_matrix)
 
                 all_rays = (
                     util.gen_rays(
@@ -314,13 +314,12 @@ with torch.no_grad():
 
             all_rgb, all_depth = [], []
             for rays in tqdm.tqdm(rays_spl):
-                (rgb, depth), xyz = render_par(rays[None])
+                rgb, depth = render_par(rays[None])
                 rgb = rgb[0].cpu()
                 depth = depth[0].cpu()
                 print(depth.shape)
                 all_rgb.append(rgb)
                 all_depth.append(depth)
-                exit()
             all_rgb = torch.cat(all_rgb, dim=0)
             all_depth = torch.cat(all_depth, dim=0)
             all_depth = (all_depth - z_near) / (z_far - z_near)
