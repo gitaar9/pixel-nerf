@@ -314,7 +314,7 @@ with torch.no_grad():
 
             all_rgb, all_depth = [], []
             for rays in tqdm.tqdm(rays_spl):
-                rgb, depth = render_par(rays[None])
+                rgb, depth = render_par(rays[None], mirror_x=True)
                 rgb = rgb[0].cpu()
                 depth = depth[0].cpu()
                 print(depth.shape)

@@ -233,7 +233,10 @@ class NeRFRenderer(torch.nn.Module):
         return z_samp
 
     def invert_tensor(self, t):
-        t[:, 0] = t[:, 0] * -1
+        if len(t.shape) == 2:
+            t[:, 0] = t[:, 0] * -1
+        if len(t.shape) == 3:
+            t[:, :, 0] = t[:, :, 0] * -1
         return t
 
     def composite(self, model, rays, z_samp, coarse=True, sb=0, mirror_x=False):
@@ -324,6 +327,10 @@ class NeRFRenderer(torch.nn.Module):
             #             rgbs.reshape(t.shape)[:len(t)//2],
             #             alphas.reshape((B*K))[:len(t)//2],
             #             plt_ax=ax)
+            # print(viewdirs.shape)
+            # a_view_dir = viewdirs.cpu().squeeze().numpy()[0]
+            # print("1: ", a_view_dir)
+            # ax.quiver(0, 0, 0, *a_view_dir)
             # limit = .5
             # ax.set_xlim3d(-limit, limit)
             # ax.set_ylim3d(-limit, limit)
@@ -335,6 +342,9 @@ class NeRFRenderer(torch.nn.Module):
             #             rgbs.reshape(t.shape)[len(t)//2:],
             #             alphas.reshape((B*K))[len(t)//2:],
             #             plt_ax=ax)
+            # a_view_dir = viewdirs.cpu().squeeze().numpy()[len(t)//2]
+            # print("1: ", a_view_dir)
+            # ax.quiver(0, 0, 0, *a_view_dir)
             # limit = .5
             # ax.set_xlim3d(-limit, limit)
             # ax.set_ylim3d(-limit, limit)
