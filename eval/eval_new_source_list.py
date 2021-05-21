@@ -306,10 +306,10 @@ with torch.no_grad():
             print(focal.shape)
             print(c.shape)
             net.encode(
-                images[src_view_mask].to(device=device).unsqueeze(0),
-                src_poses.unsqueeze(0),
-                focal,
-                c=c,
+                torch.cat([images[src_view_mask].to(device=device).unsqueeze(0), images[src_view_mask].to(device=device).unsqueeze(0)], dim=0),
+                torch.cat([src_poses.unsqueeze(0), src_poses.unsqueeze(0)], dim=0),
+                torch.cat([focal, focal], dim=0),
+                c=torch.cat([c, c], dim=0),
             )
 
             all_rgb, all_depth = [], []

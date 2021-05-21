@@ -189,16 +189,38 @@ class PixelNeRFTrainer(trainlib.Trainer):
         src_poses = util.batched_index_select_nd(all_poses, image_ord)  # (SB, NS, 4, 4)
 
         all_bboxes = all_poses = all_images = None
+        # print('Encode shapes')
+        # print(src_images.shape)
+        # print(torch.cat([src_images, src_images], dim=0).shape)
+        #
+        # print(src_poses.shape)
+        # print(torch.cat([src_poses, src_poses], dim=0).shape)
+        #
+        # print(all_focals.shape)
+        # print(torch.cat([all_focals, all_focals], dim=0).shape)
+        #
+        # print(all_c.shape)
+        # print(torch.cat([all_c, all_c], dim=0).shape)
+        mirror_x = True
 
-        net.encode(
-            src_images,
-            src_poses,
-            all_focals.to(device=device),
-            c=all_c.to(device=device) if all_c is not None else None,
-        )
+        if mirror_x:
+            net.encode(
+                torch.cat([src_images, src_images], dim=0),
+                torch.cat([src_poses, src_poses], dim=0),
+                torch.cat([all_focals, all_focals], dim=0).to(device=device),
+                c=torch.cat([all_c, all_c], dim=0).to(device=device) if all_c is not None else None,
+            )
+        else:
+            net.encode(
+                src_images,
+                src_poses,
+                all_focals.to(device=device),
+                c=all_c.to(device=device) if all_c is not None else None,
+            )
+
 
         # line below is basically net.call()/net.forward() not true:
-        render_dict = DotMap(render_par(all_rays, want_weights=True, mirror_x=True,))
+        render_dict = DotMap(render_par(all_rays, want_weights=True, mirror_x=mirror_x,))
         coarse = render_dict.coarse
         fine = render_dict.fine
         using_fine = len(fine) > 0
