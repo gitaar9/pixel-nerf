@@ -237,9 +237,9 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
         # Symmetry based loss
         sym_loss_function = torch.nn.MSELoss()
-        # orig_sym_loss = sym_loss_function(coarse.alphas, coarse.inverse_alphas.detach())
+        orig_sym_loss = sym_loss_function(coarse.alphas, coarse.inverse_alphas.detach())
         inverse_sym_loss = sym_loss_function(coarse.inverse_alphas, coarse.alphas.detach())
-        sym_loss = (inverse_sym_loss)
+        sym_loss = inverse_sym_loss + orig_sym_loss
         loss_dict["sym_loss"] = sym_loss.item()
 
         loss = rgb_loss + (sym_loss * self.lambda_sym)
