@@ -387,10 +387,10 @@ class NeRFRenderer(torch.nn.Module):
                 pix_alpha = weights.sum(dim=1)  # (B), pixel alpha
                 rgb_final = rgb_final + 1 - pix_alpha.unsqueeze(-1)  # (B, 3)
             return (
-                weights[:weights.shape[0] // 2],
-                rgb_final[:rgb_final.shape[0] // 2],
-                depth_final[:depth_final.shape[0] // 2],
-                alphas[:alphas.shape[0] // 2],
+                weights[:weights.shape[0] // 2] if mirror_x else weights,
+                rgb_final[:rgb_final.shape[0] // 2] if mirror_x else rgb_final,
+                depth_final[:depth_final.shape[0] // 2] if mirror_x else depth_final,
+                alphas[:alphas.shape[0] // 2] if mirror_x else alphas,
                 alphas[alphas.shape[0] // 2:] if mirror_x else None,
             )
 
