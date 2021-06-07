@@ -11,4 +11,4 @@ ml Python/3.7.4-GCCcore-8.3.0
 
 source /scratch/s2576597/pixelnerf_venv/bin/activate
 
-python -u train/train.py -n og_dataset_sym_loss -c conf/exp/srn_sym.conf -D /scratch/s2576597/pixel_nerf_datasets/srn_cars/cars --gpu_id=0 --resume
+python -u train/train.py -n og_dataset_sym_loss -c conf/exp/srn_sym.conf -D /scratch/s2576597/pixel_nerf_datasets/srn_cars/cars --gpu_id=0
