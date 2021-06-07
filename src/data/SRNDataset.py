@@ -7,8 +7,6 @@ import numpy as np
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
 
 
-
-
 class SRNDataset(torch.utils.data.Dataset):
     """
     Dataset from SRN (V. Sitzmann et al. 2020)
@@ -57,6 +55,10 @@ class SRNDataset(torch.utils.data.Dataset):
         else:
             self.z_near = 0.8
             self.z_far = 1.8
+        if "renders" in self.dataset_name:  # For my dataset
+            self.z_near = 0.3
+            self.z_far = 2.5
+
         self.lindisp = False
 
     def __len__(self):

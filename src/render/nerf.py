@@ -415,7 +415,7 @@ class NeRFRenderer(torch.nn.Module):
             assert len(rays.shape) == 3
             superbatch_size = rays.shape[0]
             rays = rays.reshape(-1, 8)  # (SB * B, 8)
-            inverse_alphas = None  # In case mirror_x is false
+
             z_coarse = self.sample_coarse(rays)  # (B, Kc)
             coarse_composite = self.composite(
                 model, rays, z_coarse, coarse=True, sb=superbatch_size, mirror_x=mirror_x

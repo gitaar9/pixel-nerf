@@ -337,6 +337,8 @@ with torch.no_grad():
                     )
                     input_img = tensor_to_image(images[src_view_mask][0])
                     imageio.imwrite(out_file, np.vstack((input_img, (all_rgb[i] * 255).astype(np.uint8))))
+                    # Only output image
+                    imageio.imwrite(os.path.join(obj_out_dir, '0.png'), (all_rgb[i] * 255).astype(np.uint8))
 
                     if args.write_depth:
                         out_depth_file = os.path.join(

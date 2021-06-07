@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#SBATCH --time=71:30:00
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:v100:1
+#SBATCH --mem=32GB
+#SBATCH --job-name=og_n_m
+
+ml CUDA/10.2.89-GCC-8.3.0
+ml Python/3.7.4-GCCcore-8.3.0
+
+source /scratch/s2576597/pixelnerf_venv/bin/activate
+
+python -u train/train.py -n og_dataset_no_mirror -c conf/exp/srn.conf -D /scratch/s2576597/pixel_nerf_datasets/srn_cars/cars --gpu_id=0 --resume
