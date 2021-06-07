@@ -90,7 +90,7 @@ class SRNDataset(torch.utils.data.Dataset):
             pose = torch.from_numpy(
                 np.loadtxt(pose_path, dtype=np.float32).reshape(4, 4)
             )
-            pose = pose @ self._coord_trans
+            # pose = pose @ self._coord_trans
 
             rows = np.any(mask, axis=1)
             cols = np.any(mask, axis=0)

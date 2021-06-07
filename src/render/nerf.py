@@ -26,7 +26,21 @@ def plot_points(coordinates_list, rgb, alpha, plt_ax=None):
 
     # Filter out points with to little alpha or completely white points
     zipped = [(c, (r, g, b, a)) for c, (r, g, b, a) in list(zip(coordinates_list, rgba)) if a > 0.01 and ((b + g + r) < 2.9)]
+
     coordinates_list, rgba = zip(*zipped)
+
+    max_points = 50000
+    if len(coordinates_list) > max_points:
+        coordinates_list = np.asarray(coordinates_list)
+        rgba = np.asarray(rgba)
+        coordinates_list = coordinates_list.copy()
+        rgba = rgba.copy()
+        idxs = np.random.choice(np.arange(len(coordinates_list)), max_points, replace=False)
+        coordinates_list = coordinates_list[idxs]
+        rgba = rgba[idxs]
+        coordinates_list = list(coordinates_list)
+        rgba = list(rgba)
+
     print("Nr of points left after filtering: ", len(coordinates_list))
 
     # Plot the points in 3D
@@ -344,7 +358,7 @@ class NeRFRenderer(torch.nn.Module):
             # a_view_dir = viewdirs.cpu().squeeze().numpy()[0][0]
             # print("1: ", a_view_dir)
             # ax.quiver(0, 0, 0, *a_view_dir)
-            # limit = .5
+            # limit = 2
             # ax.set_xlim3d(-limit, limit)
             # ax.set_ylim3d(-limit, limit)
             # ax.set_zlim3d(-limit, limit)
