@@ -11,4 +11,4 @@ ml Python/3.7.4-GCCcore-8.3.0
 
 source /scratch/s2576597/pixelnerf_venv/bin/activate
 
-python -u train/train.py -n new_car_no_mirror_v2 -c conf/exp/srn.conf -D /scratch/s2576597/pixel_nerf_datasets/car_renders_train_upper_hemisphere_30_fov_pixel_nerf_v2/cars --gpu_id=0
+python -u train/train.py -n new_car_no_mirror_v2 -c conf/exp/srn.conf -D /scratch/s2576597/pixel_nerf_datasets/car_renders_train_upper_hemisphere_30_fov_v2_pixel_nerf/cars --gpu_id=0
