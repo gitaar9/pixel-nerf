@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#SBATCH --time=02:00:00
+#SBATCH --partition=gpushort
+#SBATCH --gres=gpu:v100:1
+#SBATCH --mem=32GB
+#SBATCH --job-name=pn_n_m_s
+
+ml CUDA/10.2.89-GCC-8.3.0
+ml Python/3.7.4-GCCcore-8.3.0
+
+source /scratch/s2576597/pixelnerf_venv/bin/activate
+
+python -u train/train.py -n new_ship_no_mirror_exp_v2_short -c conf/exp/srn.conf -D /scratch/s2576597/pixel_nerf_datasets/ship_renders_train_upper_hemisphere_30_fov_v2_pixel_nerf/ships --gpu_id=0
