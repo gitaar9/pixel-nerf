@@ -11,4 +11,4 @@ ml Python/3.7.4-GCCcore-8.3.0
 
 source /scratch/s2576597/pixelnerf_venv/bin/activate
 
-python eval/eval.py -n new_car_sym_loss_exp_v2 -c conf/exp/srn_sym.conf -D /scratch/s2576597/pixel_nerf_datasets/car_recognition_test_set/cars --gpu_id=0 --split=test --eval_view_list=../sncar_viewlist_data_augmentation.txt --viewlist=../sncar_test_views.txt --output=/scratch/s2576597/pixel_nerf_eval_output/sncar/data_augmentation --free_pose
+python eval/eval.py -n new_car_no_mirror_v2 -c conf/exp/srn.conf -D /scratch/s2576597/pixel_nerf_datasets/car_recognition_test_set/cars --gpu_id=0 --split=test --eval_view_list=../sncar_viewlist_data_augmentation.txt --viewlist=../sncar_test_views.txt --output=/scratch/s2576597/pixel_nerf_eval_output/sncar/data_augmentation_no_mirror --free_pose
