@@ -11,7 +11,7 @@ def read_file(folder_path):
 
 
 folder = '/samsung_hdd/Files/AI/TNO/remote_folders/pixel_nerf_eval/pixel_nerf_eval_output/sncar'
-folder = '/samsung_hdd/Files/AI/TNO/remote_folders/pixel_nerf_eval/pixel_nerf_eval_output/snship'
+# folder = '/samsung_hdd/Files/AI/TNO/remote_folders/pixel_nerf_eval/pixel_nerf_eval_output/snship'
 nm = read_file(os.path.join(folder, 'no_mirror'))
 sl = read_file(os.path.join(folder, 'sym_loss'))
 
